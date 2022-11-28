@@ -8,14 +8,14 @@ func (g Graph) AddDirectedEdge(fromNodeId, toNodeId string) {
 	toNode := g.GetVertex(toNodeId)
 
 	if fromNode != nil && toNode != nil {
-		for _, vertex := range fromNode.edgeAdjacent {
+		for _, vertex := range fromNode.adjacencyList {
 			if vertex.toNode == toNode {
 				err := fmt.Errorf("This already exists (%v -> %v)", fromNodeId, toNodeId)
 				fmt.Println(err.Error())
 				return
 			}
 		}
-		fromNode.edgeAdjacent = append(fromNode.edgeAdjacent, &Edge{fromNode: fromNode, toNode: toNode})
+		fromNode.adjacencyList = append(fromNode.adjacencyList, &Edge{fromNode: fromNode, toNode: toNode})
 	} else {
 		err := fmt.Errorf("Invalid Edge (%v -> %v)", fromNodeId, toNodeId)
 		fmt.Println(err.Error())
@@ -34,7 +34,7 @@ func (g Graph) AddUndirectedEdge(fromNodeId, toNodeId string) {
 
 	// ...
 	if fromNode != nil && toNode != nil {
-		for _, vertex := range fromNode.edgeAdjacent {
+		for _, vertex := range fromNode.adjacencyList {
 			if vertex.toNode == toNode {
 				err := fmt.Errorf("This already exists (%v -> %v)", fromNodeId, toNodeId)
 				fmt.Println(err.Error())
@@ -42,7 +42,7 @@ func (g Graph) AddUndirectedEdge(fromNodeId, toNodeId string) {
 			}
 		}
 
-		for _, vertex := range toNode.edgeAdjacent {
+		for _, vertex := range toNode.adjacencyList {
 			if vertex.toNode == fromNode {
 				err := fmt.Errorf("This already exists (%v -> %v)", toNodeId, fromNodeId)
 				fmt.Println(err.Error())
@@ -51,11 +51,11 @@ func (g Graph) AddUndirectedEdge(fromNodeId, toNodeId string) {
 		}
 
 		if fromNodeToToNodeExists {
-			fromNode.edgeAdjacent = append(fromNode.edgeAdjacent, &Edge{fromNode: fromNode, toNode: toNode})
+			fromNode.adjacencyList = append(fromNode.adjacencyList, &Edge{fromNode: fromNode, toNode: toNode})
 		}
 
 		if toNodeToFromNodeExists {
-			toNode.edgeAdjacent = append(toNode.edgeAdjacent, &Edge{fromNode: toNode, toNode: fromNode})
+			toNode.adjacencyList = append(toNode.adjacencyList, &Edge{fromNode: toNode, toNode: fromNode})
 		}
 
 	} else {

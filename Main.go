@@ -14,8 +14,7 @@ type Graph struct {
 
 type Vertex struct {
 	nodeId         string
-	adjacent       []*Vertex
-	edgeAdjacent   []*Edge
+	adjacencyList  []*Edge
 	previousVertex *Vertex
 	distance       float64
 	explored       bool
@@ -35,14 +34,14 @@ func (g Graph) AddDirectedWeightedEdge(fromNodeId, toNodeId string, weight float
 	toNode := g.GetVertex(toNodeId)
 
 	if fromNode != nil && toNode != nil {
-		for _, vertex := range fromNode.edgeAdjacent {
+		for _, vertex := range fromNode.adjacencyList {
 			if vertex.toNode == toNode {
 				err := fmt.Errorf("This already exists (%v -> %v)", fromNodeId, toNodeId)
 				fmt.Println(err.Error())
 				return
 			}
 		}
-		fromNode.edgeAdjacent = append(fromNode.edgeAdjacent, &Edge{fromNode: fromNode, toNode: toNode, weight: weight})
+		fromNode.adjacencyList = append(fromNode.adjacencyList, &Edge{fromNode: fromNode, toNode: toNode, weight: weight})
 	} else {
 		err := fmt.Errorf("Invalid Edge (%v -> %v)", fromNodeId, toNodeId)
 		fmt.Println(err.Error())
@@ -59,14 +58,14 @@ func (g Graph) AddUndirectedWeightedEdge(fromNodeId, toNodeId string, weight flo
 	toNodeToFromNodeExists := true
 
 	if fromNode != nil && toNode != nil {
-		for _, vertex := range fromNode.edgeAdjacent {
+		for _, vertex := range fromNode.adjacencyList {
 			if vertex.toNode == toNode {
 				fmt.Printf("This edge already exists (%v -> %v)", fromNodeId, toNodeId)
 				fromNodeToToNodeExists = false
 			}
 		}
 
-		for _, vertex := range toNode.edgeAdjacent {
+		for _, vertex := range toNode.adjacencyList {
 			if vertex.toNode == fromNode {
 				fmt.Printf("This edge already exists (%v -> %v)", fromNodeId, toNodeId)
 				toNodeToFromNodeExists = false
@@ -74,11 +73,11 @@ func (g Graph) AddUndirectedWeightedEdge(fromNodeId, toNodeId string, weight flo
 		}
 
 		if fromNodeToToNodeExists {
-			fromNode.edgeAdjacent = append(fromNode.edgeAdjacent, &Edge{fromNode: fromNode, toNode: toNode, weight: weight})
+			fromNode.adjacencyList = append(fromNode.adjacencyList, &Edge{fromNode: fromNode, toNode: toNode, weight: weight})
 		}
 
 		if toNodeToFromNodeExists {
-			toNode.edgeAdjacent = append(toNode.edgeAdjacent, &Edge{fromNode: toNode, toNode: fromNode, weight: weight})
+			toNode.adjacencyList = append(toNode.adjacencyList, &Edge{fromNode: toNode, toNode: fromNode, weight: weight})
 		}
 
 	} else {
@@ -119,7 +118,7 @@ func (g *Graph) Dijkstra(fromNodeId, toNodeId string) {
 
 		currentNode := data.Peek()
 
-		for _, nextNode := range currentNode.edgeAdjacent {
+		for _, nextNode := range currentNode.adjacencyList {
 
 			if nextNode.toNode.previousVertex == nil || nextNode.toNode.distance > (currentNode.distance+nextNode.weight) {
 				nextNode.toNode.previousVertex = currentNode
@@ -168,7 +167,7 @@ func (g *Graph) NumVertices() int {
 func (g *Graph) NumEdges() int {
 	numberOfEdged := 0
 	for _, v := range g.vertecies {
-		numberOfEdged = numberOfEdged + len(v.edgeAdjacent)
+		numberOfEdged = numberOfEdged + len(v.adjacencyList)
 	}
 	return numberOfEdged
 }
@@ -191,7 +190,7 @@ func (g *Graph) BFS(nodeId string) map[string]int {
 
 	for len(data.Elements) > 0 {
 		currentNode := data.Peek()
-		for _, c := range currentNode.edgeAdjacent {
+		for _, c := range currentNode.adjacencyList {
 			if !c.toNode.explored {
 				c.toNode.explored = true
 				c.toNode.layer = c.fromNode.layer + 1
@@ -221,7 +220,7 @@ func (g *Graph) DFS(nodeId string) map[string]bool {
 		if !currentNode.explored {
 			currentNode.explored = true
 			resultMap[currentNode.nodeId] = true
-			for _, node := range currentNode.edgeAdjacent {
+			for _, node := range currentNode.adjacencyList {
 				data.Push(node.toNode)
 			}
 		}
@@ -233,7 +232,7 @@ func (g *Graph) DFS(nodeId string) map[string]bool {
 func (g *Graph) Print() {
 	for _, v := range g.vertecies {
 		fmt.Printf("\nVertex %v : ", v.nodeId)
-		for _, w := range v.edgeAdjacent {
+		for _, w := range v.adjacencyList {
 			fmt.Printf(" %v (%v)", w.toNode.nodeId, w.weight)
 		}
 	}
