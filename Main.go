@@ -28,6 +28,14 @@ type Edge struct {
 	weight   float64
 }
 
+func compare(a, b *Vertex) bool {
+	if a.distance < b.distance {
+		return false
+	} else {
+		return true
+	}
+}
+
 func (g Graph) AddDirectedWeightedEdge(fromNodeId, toNodeId string, weight float64) {
 
 	fromNode := g.GetVertex(fromNodeId)
@@ -262,6 +270,7 @@ func initGraph9(filename string) Graph {
 			}
 			graph.AddVertex(f[0])
 			graph.AddDirectedWeightedEdge(id1, f[0], length)
+
 		}
 
 	}
@@ -334,4 +343,37 @@ func main() {
 	graph3.Dijkstra("1", "165")
 	graph3.Dijkstra("1", "188")
 	graph3.Dijkstra("1", "197")
+
+	heap := &MinHeap{}
+
+	heap.Insert(&Vertex{distance: 12})
+	heap.Insert(&Vertex{distance: 13})
+	heap.Insert(&Vertex{distance: 16})
+	heap.Insert(&Vertex{distance: 34})
+	heap.Insert(&Vertex{distance: 45})
+	heap.Insert(&Vertex{distance: 100})
+
+	heap.PrintHeap()
+
+	heap.ExtractMin()
+
+	heap.PrintHeap()
+	heap2 := &MaxHeap{}
+
+	heap2.Insert(&Vertex{distance: 100})
+	heap2.Insert(&Vertex{distance: 19})
+	heap2.Insert(&Vertex{distance: 36})
+	heap2.Insert(&Vertex{distance: 17})
+	heap2.Insert(&Vertex{distance: 3})
+	heap2.Insert(&Vertex{distance: 25})
+	heap2.Insert(&Vertex{distance: 1})
+	heap2.Insert(&Vertex{distance: 2})
+	heap2.Insert(&Vertex{distance: 7})
+
+	heap2.PrintHeap()
+
+	heap2.ExtractMax()
+
+	heap2.PrintHeap()
+
 }
