@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 type Graph struct {
 	isUndirected bool
 	vertecies    []*Vertex
+	curLabel     int
 }
 
 func NewGraph() Graph {
@@ -26,6 +28,7 @@ type Vertex struct {
 	distance       float64
 	explored       bool
 	layer          int
+	f              int
 }
 
 type Edge struct {
@@ -130,6 +133,48 @@ func (g *Graph) AddVertex(nodeId string) {
 	g.vertecies = append(g.vertecies, &Vertex{nodeId: nodeId})
 }
 
+func (g *Graph) TopoSort() map[string]int {
+
+	g.curLabel = g.NumVertices() + 1
+	resultMap := map[string]int{}
+
+	if g.isUndirected {
+		return resultMap
+	}
+
+	for _, node := range g.vertecies {
+		resultMap[node.nodeId] = 0
+		node.explored = false
+	}
+
+	for _, node := range g.vertecies {
+		if !node.explored {
+			DFSTopo(g, node)
+		}
+	}
+
+	for _, node := range g.vertecies {
+		resultMap[node.nodeId] = node.f
+	}
+
+	return resultMap
+}
+
+func DFSTopo(graph *Graph, vertex *Vertex) {
+	for _, node := range graph.vertecies {
+		if node == vertex {
+			for _, node2 := range node.adjacencyList {
+				if !node2.toNode.explored {
+					DFSTopo(graph, node2.toNode)
+					node2.toNode.explored = true
+				}
+			}
+			vertex.f = graph.curLabel
+			graph.curLabel--
+		}
+	}
+}
+
 func (g *Graph) Dijkstra(fromNodeId, toNodeId string) map[string]float64 {
 
 	resultMap := map[string]float64{}
@@ -139,38 +184,41 @@ func (g *Graph) Dijkstra(fromNodeId, toNodeId string) map[string]float64 {
 		return nil
 	}
 
+	for _, node := range g.vertecies {
+		node.distance = math.MaxFloat64
+	}
+
+	for _, node := range g.vertecies {
+		node.previousVertex = nil
+	}
+
 	var result []*Vertex
 	fromNode := g.GetVertex(fromNodeId)
 	fromNode.distance = 0
 	data := &MinHeap{}
 	data.Insert(fromNode)
 
-	for len(data.Elements) > 0 {
-		currentNode2 := data.ExtractMin()
-		for _, nextNode := range currentNode2.adjacencyList {
-			if nextNode.toNode.previousVertex == nil || nextNode.toNode.distance > (currentNode2.distance+nextNode.weight) {
-				nextNode.toNode.previousVertex = currentNode2
-				nextNode.toNode.distance = currentNode2.distance + nextNode.weight
-				data.Insert(nextNode.toNode)
+	if fromNodeId == toNodeId {
+		result = append(result, fromNode)
+		resultMap[fromNodeId] = fromNode.distance
+	} else {
+		for len(data.Elements) > 0 {
+			currentNode := data.ExtractMin()
+			for _, nextNode := range currentNode.adjacencyList {
+				if nextNode.toNode.previousVertex == nil || nextNode.toNode.distance > (currentNode.distance+nextNode.weight) {
+					nextNode.toNode.previousVertex = currentNode
+					nextNode.toNode.distance = currentNode.distance + nextNode.weight
+					data.Insert(nextNode.toNode)
+				}
 			}
 		}
-	}
 
-	for _, node := range g.vertecies {
-		if node.nodeId == toNodeId {
-			result = append(result, node)
-			resultMap[node.nodeId] = node.distance
-			break
-		}
-	}
+		result = append(result, g.GetVertex(toNodeId))
+		resultMap[toNodeId] = g.GetVertex(toNodeId).distance
 
-	if len(result) == 1 {
 		for result[len(result)-1].nodeId != fromNodeId {
 			result = append(result, result[len(result)-1].previousVertex)
 		}
-	} else {
-		fmt.Printf("The dijkstra algorithm did not found a path.")
-		return nil
 	}
 
 	// Print result
@@ -268,6 +316,16 @@ func (g *Graph) Print() {
 	fmt.Println("\n")
 }
 
+func (g *Graph) PrintAllInformations() {
+	for _, v := range g.vertecies {
+		fmt.Printf("\nKnoten %v : ", v.nodeId)
+		for _, w := range v.adjacencyList {
+			fmt.Printf(" %v (%v) (Distance: %v)", w.toNode.nodeId, w.weight, w.toNode.distance)
+		}
+	}
+	fmt.Println("\n")
+}
+
 func initGraph9(filename string) Graph {
 
 	graph := Graph{}
@@ -331,6 +389,7 @@ func main() {
 	fmt.Printf("Anzahl an Kanten: %v\n", graph.NumEdges())
 	fmt.Printf("BFS (Startknoten: 1): %v\n", graph.BFS("1"))
 	fmt.Printf("DFS (Startknoten: 1): %v\n", graph.DFS("1"))
+	fmt.Printf("Topo-Sort: %v\n", graph.TopoSort())
 	fmt.Printf("Gerichtet: %v\n", !graph.isUndirected)
 
 	graph.Dijkstra("1", "5")
@@ -352,6 +411,7 @@ func main() {
 	fmt.Printf("Anzahl an Kanten: %v\n", graph2.NumEdges())
 	fmt.Printf("BFS (Startknoten: 1): %v\n", graph2.BFS("1"))
 	fmt.Printf("DFS (Startknoten: 1): %v\n", graph2.DFS("1"))
+	fmt.Printf("Topo-Sort: %v\n", graph2.TopoSort())
 	fmt.Printf("Gerichtet: %v\n", !graph2.isUndirected)
 
 	for i := 1; i <= 8; i++ {
@@ -372,6 +432,7 @@ func main() {
 	fmt.Printf("Anzahl an Kanten: %v\n", graph3.NumEdges())
 	//fmt.Printf("BFS (Startknoten: 1): %v\n", graph3.BFS("1"))
 	//fmt.Printf("DFS (Startknoten: 1): %v\n", graph3.DFS("1"))
+	fmt.Printf("Topo-Sort: %v\n", graph3.TopoSort())
 	fmt.Printf("Gerichtet: %v\n", !graph3.isUndirected)
 
 	graph3.Dijkstra("1", "7")
@@ -384,6 +445,44 @@ func main() {
 	graph3.Dijkstra("1", "165")
 	graph3.Dijkstra("1", "188")
 	graph3.Dijkstra("1", "197")
+
+	// Fourth Graph
+	fmt.Println("Graph:")
+	graph4 := NewGraph()
+
+	// Add vertecies
+	graph4.AddVertex(strconv.Itoa(0))
+	graph4.AddVertex(strconv.Itoa(1))
+	graph4.AddVertex(strconv.Itoa(2))
+	graph4.AddVertex(strconv.Itoa(3))
+	graph4.AddVertex(strconv.Itoa(4))
+	graph4.AddVertex(strconv.Itoa(5))
+	graph4.AddVertex(strconv.Itoa(6))
+	graph4.AddVertex(strconv.Itoa(7))
+
+	// Add edges
+	graph4.AddDirectedEdge("5", "1")
+	graph4.AddDirectedEdge("7", "1")
+	graph4.AddDirectedEdge("7", "0")
+	graph4.AddDirectedEdge("3", "0")
+	graph4.AddDirectedEdge("3", "4")
+	graph4.AddDirectedEdge("0", "6")
+	graph4.AddDirectedEdge("1", "6")
+	graph4.AddDirectedEdge("1", "4")
+	graph4.AddDirectedEdge("1", "2")
+
+	// Print graph
+	graph4.Print()
+
+	// Graph stats
+	fmt.Printf("Anzahl an Knoten: %v\n", graph4.NumVertices())
+	fmt.Printf("Anzahl an Kanten: %v\n", graph4.NumEdges())
+	//fmt.Printf("BFS (Startknoten: 1): %v\n", graph4.BFS("1"))
+	//fmt.Printf("DFS (Startknoten: 1): %v\n", graph4.DFS("1"))
+	fmt.Printf("Topo-Sort: %v\n", graph4.TopoSort())
+	fmt.Printf("Gerichtet: %v\n", !graph4.isUndirected)
+
+	graph4.TopoSort()
 
 	/*
 		heap := &MinHeap{}
