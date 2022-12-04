@@ -9,7 +9,14 @@ import (
 )
 
 type Graph struct {
-	vertecies []*Vertex
+	isUndirected bool
+	vertecies    []*Vertex
+}
+
+func NewGraph() Graph {
+	graph := Graph{}
+	graph.isUndirected = false
+	return graph
 }
 
 type Vertex struct {
@@ -36,7 +43,7 @@ func compare(a, b *Vertex) bool {
 	}
 }
 
-func (g Graph) AddDirectedWeightedEdge(fromNodeId, toNodeId string, weight float64) {
+func (g *Graph) AddDirectedWeightedEdge(fromNodeId, toNodeId string, weight float64) {
 
 	fromNode := g.GetVertex(fromNodeId)
 	toNode := g.GetVertex(toNodeId)
@@ -44,20 +51,30 @@ func (g Graph) AddDirectedWeightedEdge(fromNodeId, toNodeId string, weight float
 	if fromNode != nil && toNode != nil {
 		for _, vertex := range fromNode.adjacencyList {
 			if vertex.toNode == toNode {
-				err := fmt.Errorf("This already exists (%v -> %v)", fromNodeId, toNodeId)
-				fmt.Println(err.Error())
+				fmt.Printf("Die Kante (%v -> %v) existiert bereits.\n", fromNodeId, toNodeId)
 				return
 			}
 		}
 		fromNode.adjacencyList = append(fromNode.adjacencyList, &Edge{fromNode: fromNode, toNode: toNode, weight: weight})
+
+		// Check if the graph is now undirected
+		if !g.isUndirected {
+			for _, node := range toNode.adjacencyList {
+				if node.toNode == fromNode {
+					g.isUndirected = true
+				}
+			}
+		}
+
 	} else {
-		err := fmt.Errorf("Invalid Edge (%v -> %v)", fromNodeId, toNodeId)
-		fmt.Println(err.Error())
+		fmt.Printf("Die Kante (%v -> %v) ist ungültig\n", fromNodeId, toNodeId)
 	}
 
 }
 
-func (g Graph) AddUndirectedWeightedEdge(fromNodeId, toNodeId string, weight float64) {
+func (g *Graph) AddUndirectedWeightedEdge(fromNodeId, toNodeId string, weight float64) {
+
+	g.isUndirected = true
 
 	fromNode := g.GetVertex(fromNodeId)
 	toNode := g.GetVertex(toNodeId)
@@ -68,14 +85,14 @@ func (g Graph) AddUndirectedWeightedEdge(fromNodeId, toNodeId string, weight flo
 	if fromNode != nil && toNode != nil {
 		for _, vertex := range fromNode.adjacencyList {
 			if vertex.toNode == toNode {
-				fmt.Printf("This edge already exists (%v -> %v)", fromNodeId, toNodeId)
+				fmt.Printf("Die Kante (%v -> %v) existiert bereits.\n", fromNodeId, toNodeId)
 				fromNodeToToNodeExists = false
 			}
 		}
 
 		for _, vertex := range toNode.adjacencyList {
 			if vertex.toNode == fromNode {
-				fmt.Printf("This edge already exists (%v -> %v)", fromNodeId, toNodeId)
+				fmt.Printf("Die Kante (%v -> %v) existiert bereits.\n", fromNodeId, toNodeId)
 				toNodeToFromNodeExists = false
 			}
 		}
@@ -89,7 +106,7 @@ func (g Graph) AddUndirectedWeightedEdge(fromNodeId, toNodeId string, weight flo
 		}
 
 	} else {
-		fmt.Printf("Invalid edge (%v -> %v)", fromNodeId, toNodeId)
+		fmt.Printf("Die Kante (%v -> %v) ist ungültig\n", fromNodeId, toNodeId)
 	}
 
 }
@@ -113,28 +130,30 @@ func (g *Graph) AddVertex(nodeId string) {
 	g.vertecies = append(g.vertecies, &Vertex{nodeId: nodeId})
 }
 
-func (g *Graph) Dijkstra(fromNodeId, toNodeId string) {
+func (g *Graph) Dijkstra(fromNodeId, toNodeId string) map[string]float64 {
 
 	resultMap := map[string]float64{}
+
+	if g.DFS(fromNodeId)[toNodeId] == false {
+		fmt.Printf("Es gibt keine Verbindung zwischen dem Startknoten (%v) und dem Zielknoten (%v)\n", fromNodeId, toNodeId)
+		return nil
+	}
+
 	var result []*Vertex
 	fromNode := g.GetVertex(fromNodeId)
 	fromNode.distance = 0
-	data := &Queue{}
-	data.Enqueue(fromNode)
+	data := &MinHeap{}
+	data.Insert(fromNode)
 
-	for data.GetLength() > 0 {
-
-		currentNode := data.Peek()
-
-		for _, nextNode := range currentNode.adjacencyList {
-
-			if nextNode.toNode.previousVertex == nil || nextNode.toNode.distance > (currentNode.distance+nextNode.weight) {
-				nextNode.toNode.previousVertex = currentNode
-				nextNode.toNode.distance = currentNode.distance + nextNode.weight
-				data.Enqueue(nextNode.toNode)
+	for len(data.Elements) > 0 {
+		currentNode2 := data.ExtractMin()
+		for _, nextNode := range currentNode2.adjacencyList {
+			if nextNode.toNode.previousVertex == nil || nextNode.toNode.distance > (currentNode2.distance+nextNode.weight) {
+				nextNode.toNode.previousVertex = currentNode2
+				nextNode.toNode.distance = currentNode2.distance + nextNode.weight
+				data.Insert(nextNode.toNode)
 			}
 		}
-		data.Dequeue()
 	}
 
 	for _, node := range g.vertecies {
@@ -151,11 +170,12 @@ func (g *Graph) Dijkstra(fromNodeId, toNodeId string) {
 		}
 	} else {
 		fmt.Printf("The dijkstra algorithm did not found a path.")
-		return
+		return nil
 	}
 
+	// Print result
 	if len(result) > 0 {
-		fmt.Printf("The shortest route (length: %v) from %v to %v is:\t[", g.GetVertex(toNodeId).distance, fromNodeId, toNodeId)
+		fmt.Printf("Der kürzeste Weg (Länge: %v) vom Startknoten (%v) zum Zielknoten (%v) ist:\t[", g.GetVertex(toNodeId).distance, fromNodeId, toNodeId)
 		for len(result) > 0 {
 			fmt.Printf("%v", result[len(result)-1].nodeId)
 			result = result[:len(result)-1]
@@ -165,6 +185,7 @@ func (g *Graph) Dijkstra(fromNodeId, toNodeId string) {
 		}
 		fmt.Println("]")
 	}
+	return resultMap
 }
 
 func (g *Graph) NumVertices() int {
@@ -239,7 +260,7 @@ func (g *Graph) DFS(nodeId string) map[string]bool {
 
 func (g *Graph) Print() {
 	for _, v := range g.vertecies {
-		fmt.Printf("\nVertex %v : ", v.nodeId)
+		fmt.Printf("\nKnoten %v : ", v.nodeId)
 		for _, w := range v.adjacencyList {
 			fmt.Printf(" %v (%v)", w.toNode.nodeId, w.weight)
 		}
@@ -279,10 +300,11 @@ func initGraph9(filename string) Graph {
 
 func main() {
 
-	// My own test
-	fmt.Println("My own test!")
-	graph := &Graph{}
+	// First Graph
+	fmt.Println("Graph:")
+	graph := NewGraph()
 
+	// Add vertecies
 	graph.AddVertex(strconv.Itoa(0))
 	graph.AddVertex(strconv.Itoa(1))
 	graph.AddVertex(strconv.Itoa(2))
@@ -290,6 +312,7 @@ func main() {
 	graph.AddVertex(strconv.Itoa(5))
 	graph.AddVertex(strconv.Itoa(7))
 
+	// Add edges
 	graph.AddUndirectedWeightedEdge("1", "3", 3)
 	graph.AddUndirectedWeightedEdge("1", "2", 5)
 	graph.AddUndirectedWeightedEdge("1", "7", 1)
@@ -300,38 +323,56 @@ func main() {
 	graph.AddUndirectedWeightedEdge("7", "5", 1)
 	graph.AddUndirectedWeightedEdge("3", "5", 7)
 
-	fmt.Println("Graph:")
+	// Print graph
 	graph.Print()
 
-	fmt.Printf("Number of Vertecies: %v\n", graph.NumVertices())
-	fmt.Printf("Number of Edges: %v\n", graph.NumEdges())
-	fmt.Printf("BFS: %v\n", graph.BFS("1"))
-	fmt.Printf("DFS: %v\n", graph.DFS("1"))
+	// Graph stats
+	fmt.Printf("Anzahl an Knoten: %v\n", graph.NumVertices())
+	fmt.Printf("Anzahl an Kanten: %v\n", graph.NumEdges())
+	fmt.Printf("BFS (Startknoten: 1): %v\n", graph.BFS("1"))
+	fmt.Printf("DFS (Startknoten: 1): %v\n", graph.DFS("1"))
+	fmt.Printf("Gerichtet: %v\n", !graph.isUndirected)
 
 	graph.Dijkstra("1", "5")
 	graph.Dijkstra("1", "1")
 	graph.Dijkstra("1", "7")
 
-	// problem9.8test.txt
-	fmt.Println("\n\nproblem9.8test.txt")
-	graph2 := Graph{}
+	// Second graph
+	fmt.Println("\nGraph: problem9.8test.txt")
+	graph2 := NewGraph()
+
+	// Init vertecies and edges
 	graph2 = initGraph9("src/problem9.8test.txt")
 
-	fmt.Printf("Number of Vertecies: %v\n", graph2.NumVertices())
-	fmt.Printf("Number of Edges: %v\n", graph2.NumEdges())
+	// Print graph
+	graph2.Print()
+
+	// Graph stats
+	fmt.Printf("Anzahl an Knoten: %v\n", graph2.NumVertices())
+	fmt.Printf("Anzahl an Kanten: %v\n", graph2.NumEdges())
+	fmt.Printf("BFS (Startknoten: 1): %v\n", graph2.BFS("1"))
+	fmt.Printf("DFS (Startknoten: 1): %v\n", graph2.DFS("1"))
+	fmt.Printf("Gerichtet: %v\n", !graph2.isUndirected)
 
 	for i := 1; i <= 8; i++ {
 		graph2.Dijkstra("1", strconv.Itoa(i))
 	}
 
-	// problem9.8.txt
-	fmt.Println("\n\nproblem9.8.txt")
-	graph3 := Graph{}
+	// Third graph
+	fmt.Println("\nGraph: problem9.8.txt")
+	graph3 := NewGraph()
+
+	// Init vertecies and edges
 	graph3 = initGraph9("src/problem9.8.txt")
+
+	// Print graph
 	//graph3.Print()
 
-	fmt.Printf("Number of Vertecies: %v\n", graph3.NumVertices())
-	fmt.Printf("Number of Edges: %v\n", graph3.NumEdges())
+	fmt.Printf("Anzahl an Knoten: %v\n", graph3.NumVertices())
+	fmt.Printf("Anzahl an Kanten: %v\n", graph3.NumEdges())
+	//fmt.Printf("BFS (Startknoten: 1): %v\n", graph3.BFS("1"))
+	//fmt.Printf("DFS (Startknoten: 1): %v\n", graph3.DFS("1"))
+	fmt.Printf("Gerichtet: %v\n", !graph3.isUndirected)
 
 	graph3.Dijkstra("1", "7")
 	graph3.Dijkstra("1", "37")
@@ -344,36 +385,38 @@ func main() {
 	graph3.Dijkstra("1", "188")
 	graph3.Dijkstra("1", "197")
 
-	heap := &MinHeap{}
+	/*
+		heap := &MinHeap{}
 
-	heap.Insert(&Vertex{distance: 12})
-	heap.Insert(&Vertex{distance: 13})
-	heap.Insert(&Vertex{distance: 16})
-	heap.Insert(&Vertex{distance: 34})
-	heap.Insert(&Vertex{distance: 45})
-	heap.Insert(&Vertex{distance: 100})
+		heap.Insert(&Vertex{distance: 12})
+		heap.Insert(&Vertex{distance: 13})
+		heap.Insert(&Vertex{distance: 16})
+		heap.Insert(&Vertex{distance: 34})
+		heap.Insert(&Vertex{distance: 45})
+		heap.Insert(&Vertex{distance: 100})
 
-	heap.PrintHeap()
+		heap.PrintHeap()
 
-	heap.ExtractMin()
+		heap.ExtractMin()
 
-	heap.PrintHeap()
-	heap2 := &MaxHeap{}
+		heap.PrintHeap()
+		heap2 := &MaxHeap{}
 
-	heap2.Insert(&Vertex{distance: 100})
-	heap2.Insert(&Vertex{distance: 19})
-	heap2.Insert(&Vertex{distance: 36})
-	heap2.Insert(&Vertex{distance: 17})
-	heap2.Insert(&Vertex{distance: 3})
-	heap2.Insert(&Vertex{distance: 25})
-	heap2.Insert(&Vertex{distance: 1})
-	heap2.Insert(&Vertex{distance: 2})
-	heap2.Insert(&Vertex{distance: 7})
+		heap2.Insert(&Vertex{distance: 100})
+		heap2.Insert(&Vertex{distance: 19})
+		heap2.Insert(&Vertex{distance: 36})
+		heap2.Insert(&Vertex{distance: 17})
+		heap2.Insert(&Vertex{distance: 3})
+		heap2.Insert(&Vertex{distance: 25})
+		heap2.Insert(&Vertex{distance: 1})
+		heap2.Insert(&Vertex{distance: 2})
+		heap2.Insert(&Vertex{distance: 7})
 
-	heap2.PrintHeap()
+		heap2.PrintHeap()
 
-	heap2.ExtractMax()
+		heap2.ExtractMax()
 
-	heap2.PrintHeap()
+		heap2.PrintHeap()
+	*/
 
 }
